@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>АвтоПромпт-Мастер | Генератор диагностических промптов</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', system-ui, sans-serif;
+      display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px;
+    }
+    .container {
+      max-width: 900px; width: 100%; background: #1e293b; border-radius: 16px; padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    h1 { font-size: 1.8rem; margin-bottom: 20px; color: #facc15; display: flex; align-items: center; gap: 8px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .field { display: flex; flex-direction: column; gap: 6px; position: relative; }
+    label { font-size: 0.9rem; color: #94a3b8; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+    input, select, textarea {
+      background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px 12px;
+      color: #e2e8f0; font-size: 0.95rem; outline: none; transition: border 0.2s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: #facc15; }
+    textarea { resize: vertical; min-height: 80px; }
+    .hint-btn {
+      background: none; border: 1px solid #334155; color: #facc15; border-radius: 6px;
+      width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+      font-weight: bold; cursor: pointer; font-size: 1rem; padding: 0; line-height: 1;
+    }
+    .hint-btn:hover { background: #334155; }
+    .hint-panel {
+      display: none; margin-top: 6px; padding: 10px; background: #0b1622; border-radius: 8px;
+      border: 1px solid #334155; font-size: 0.85rem; color: #cbd5e1; max-height: 150px; overflow-y: auto;
+    }
+    .hint-panel.open { display: block; }
+    .hint-panel ul { padding-left: 18px; margin: 0; }
+    .hint-panel li { margin-bottom: 4px; }
+    .chip-container { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .chip {
+      background: #2d3a4f; color: #facc15; padding: 3px 10px; border-radius: 20px;
+      font-size: 0.8rem; cursor: pointer; transition: background 0.2s;
+    }
+    .chip:hover { background: #3b4a63; }
+    .checks { display: flex; gap: 16px; margin: 12px 0 20px; }
+    .checks label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+    button {
+      background: #facc15; color: #0f172a; border: none; border-radius: 8px; padding: 10px 20px;
+      font-weight: bold; cursor: pointer; transition: background 0.2s; font-size: 0.95rem;
+    }
+    button:hover { background: #eab308; }
+    button.secondary { background: #334155; color: #e2e8f0; }
+    button.secondary:hover { background: #475569; }
+    .output {
+      margin-top: 24px; background: #0f172a; border-radius: 12px; padding: 16px;
+      border: 1px solid #334155; position: relative;
+    }
+    .output-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .output-header span { font-weight: 600; color: #facc15; }
+    pre { white-space: pre-wrap; word-wrap: break-word; font-size: 0.9rem; line-height: 1.5; max-height: 400px; overflow-y: auto; color: #cbd5e1; }
+    .copy-btn { background: #334155; color: white; padding: 6px 14px; border-radius: 6px; }
+    .copy-btn:hover { background: #475569; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🔧 АвтоПромпт-Мастер</h1>
+
+  <div class="grid">
+    <div class="field">
+      <label>📌 Шаблон
+        <span class="hint-btn" id="hintTemplateBtn" title="Подсказка по шаблону">💡</span>
+      </label>
+      <select id="templateSelect">
+        <option value="engine">Двигатель</option>
+        <option value="transmission">Трансмиссия</option>
+        <option value="suspension">Ходовая часть</option>
+        <option value="brakes">Тормозная система</option>
+        <option value="electrical">Электрика</option>
+        <option value="body">Кузов / ЛКП</option>
+        <option value="climate">Климат-контроль</option>
+        <option value="fuel">Топливная система</option>
+        <option value="exhaust">Выхлопная система</option>
+        <option value="general">Общая диагностика</option>
+      </select>
+      <div class="hint-panel" id="hintTemplate"></div>
+    </div>
+    <div class="field">
+      <label>🚗 Марка
+        <span class="hint-btn" id="hintBrandBtn" title="Примеры марок">💡</span>
+      </label>
+      <input type="text" id="brand" placeholder="например, Toyota">
+      <div class="hint-panel" id="hintBrand"></div>
+    </div>
+    <div class="field">
+      <label>🧩 Модель / Год / Двигатель
+        <span class="hint-btn" id="hintModelBtn" title="Примеры моделей">💡</span>
+      </label>
+      <input type="text" id="model" placeholder="Camry 2019, 2.5 л">
+      <div class="hint-panel" id="hintModel"></div>
+    </div>
+    <div class="field">
+      <label>📋 Симптомы
+        <span class="hint-btn" id="hintSymptomsBtn" title="Примеры симптомов">💡</span>
+      </label>
+      <textarea id="symptoms" placeholder="Check Engine, троит на холодную, вибрация при разгоне..."></textarea>
+      <div class="chip-container" id="symptomChips"></div>
+      <div class="hint-panel" id="hintSymptoms"></div>
+    </div>
+  </div>
+
+  <div class="checks">
+    <label><input type="checkbox" id="chainOfThought" checked> Цепочка рассуждений</label>
+    <label><input type="checkbox" id="security" checked> Безопасность</label>
+  </div>
+
+  <div class="btn-group">
+    <button id="generateBtn">⚡ Собрать промпт</button>
+    <button id="resetBtn" class="secondary">🔄 Сброс</button>
+  </div>
+
+  <div class="output" id="outputBlock" style="display:none;">
+    <div class="output-header">
+      <span>📄 Готовый промпт</span>
+      <button id="copyBtn" class="copy-btn">📋 Копировать</button>
+    </div>
+    <pre id="promptResult"></pre>
+  </div>
+</div>
+
+<script>
+  // База знаний шаблонов с расширенными подсказками
+  const templates = {
+    engine: {
+      role: "Ты — диагност по двигателям внутреннего сгорания с 20-летним стажем. Специализируешься на механических неисправностях, системе зажигания, ГРМ, датчиках.",
+      task: "Проведи пошаговую диагностику неисправности двигателя. Назови 3-5 вероятных причин, для каждой — способ проверки (визуальный, мультиметр, сканер OBD2) и ожидаемые параметры.",
+      context: "Автомобиль: [Марка] [Модель/Год/Двигатель]. Симптомы: [Симптомы].",
+      rules: "1. Исключи критические риски (перегрев, падение давления масла).\n2. Проверь коды ошибок OBD2.\n3. Для каждой гипотезы укажи конкретные цифры (компрессия, напряжение датчиков).\n4. Если нужна разборка узла — предупреди.",
+      hints: {
+        template: "⚙️ Диагностика ДВС. Типичные проблемы: пропуски зажигания, стук, дым, потеря мощности. Используй компрессометр, стробоскоп, газоанализатор.",
+        brand: "Примеры: Toyota, BMW, ГАЗ, LADA — любые марки. Можно указать «Неизвестно».",
+        model: "Уточни модель и двигатель: например, «Focus 2.0 TDCi», «Granta 1.6 16V». Это влияет на типичные болячки.",
+        symptoms: ["Check Engine", "троит на холодную", "стук гидрокомпенсаторов", "дым из выхлопной", "перегрев", "потеря мощности", "вибрация", "плавают обороты", "затруднённый пуск"]
+      }
+    },
+    transmission: {
+      role: "Ты — эксперт по трансмиссиям (МКПП, АКПП, вариатор, DSG). Знаешь типичные неисправности гидротрансформаторов, сцепления, мехатроников.",
+      task: "Опиши пошаговую диагностику проблемы с коробкой передач. Укажи вероятные причины, способы проверки уровня/состояния масла, адаптацию, ошибки ЭБУ.",
+      context: "Автомобиль: [Марка] [Модель/Год/Двигатель]. Симптомы: [Симптомы].",
+      rules: "1. Уточни тип трансмиссии.\n2. Проверь уровень масла (если возможно).\n3. Считай ошибки через диагностический разъем.\n4. Предложи тест-драйв с контролем параметров.",
+      hints: {
+        template: "⚙️ Трансмиссия. Типичное: пинки, пробуксовка, задержка включения, вой, течь масла. Уточни АКПП/МКПП.",
+        brand: "Примеры: Volkswagen (DSG), Nissan (CVT), BMW (ZF) — укажи марку.",
+        model: "Например, «Passat B7 DSG-7», «Qashqai CVT». Это определит тип коробки.",
+        symptoms: ["пинки при переключении", "пробуксовка", "гул/вой", "масло на полу", "аварийный режим", "горит ключ/шестерёнка на панели", "машина не едет", "вибрация на скорости"]
+      }
+    },
+    suspension: {
+      role: "Ты — ходовщик-диагност с опытом работы с подвесками всех типов (McPherson, многорычажка, пневма).",
+      task: "Определи источник стуков/вибраций/увода в подвеске. Предложи последовательность проверок на подъёмнике и на дороге.",
+      context: "Автомобиль: [Марка] [Модель/Год]. Симптомы: [Симптомы].",
+      rules: "1. Раздели симптомы на переднюю/заднюю ось.\n2. Проверь люфты шаровых, сайлентблоков, рулевых тяг.\n3. Осмотри амортизаторы на предмет течей.",
+      hints: {
+        template: "🚗 Ходовая. Ищи стуки на кочках, увод, крен, неравномерный износ шин. Понадобится подъёмник или домкрат.",
+        brand: "Любая: Kia, Ford, Mercedes. У разных марок свои слабые места (например, стойки стабилизатора).",
+        model: "Примеры: «Solaris», «Focus 3», «X5 E70».",
+        symptoms: ["стук при проезде неровностей", "скрип при повороте", "увод влево/вправо", "машина плавает", "пробой подвески", "крен в повороте", "неравномерный износ шин"]
+      }
+    },
+    brakes: {
+      role: "Ты — специалист по тормозным системам, включая ABS, ESP, гидроблоки.",
+      task: "Диагностируй неисправность тормозов. Опиши проверку колодок, дисков, тормозной жидкости, датчиков ABS.",
+      context: "Автомобиль: [Марка] [Модель]. Симптомы: [Симптомы].",
+      rules: "1. Безопасность прежде всего: проверь уровень жидкости, целостность трубок.\n2. Считай ошибки блока ABS.\n3. Предложи тест на срабатывание ABS при наличии.",
+      hints: {
+        template: "🛑 Тормоза. Опасно! Проверяй скрип, вибрацию педали, увеличенный путь, загоревшуюся лампу ABS.",
+        brand: "Примеры: Honda, Skoda, ГАЗель. Учитывай особенности системы (барабанные/дисковые).",
+        model: "Уточни модификацию: «Octavia A7», «Civic 10».",
+        symptoms: ["скрип при торможении", "вибрация педали", "увеличенный тормозной путь", "горит ABS", "педаль проваливается", "машину тянет при торможении"]
+      }
+    },
+    electrical: {
+      role: "Ты — автоэлектрик-диагност, разбираешься в CAN-шинах, генераторах, стартерах, блоках управления.",
+      task: "Найди причину электрической неисправности. Предложи алгоритм проверки напряжения, предохранителей, массы, блоков управления.",
+      context: "Автомобиль: [Марка] [Модель/Год]. Симптомы: [Симптомы].",
+      rules: "1. Начни с АКБ и предохранителей.\n2. Проверь просадки напряжения мультиметром.\n3. При сложных случаях используй осциллограф или дилерский сканер.",
+      hints: {
+        template: "⚡ Электрика. Всё, что мигает/не горит/не крутит. Проверь клеммы, массу, генератор. Может потребоваться схема.",
+        brand: "Укажи марку: у некоторых проблемы с проводкой (например, Peugeot, Land Rover).",
+        model: "Напиши, например, «308 T9», «Freelander 2».",
+        symptoms: ["не заводится", "стартер не крутит", "тусклый свет фар", "ошибка по CAN-шине", "садится аккумулятор", "не работают стеклоподъёмники", "горит гирлянда на панели"]
+      }
+    },
+    body: {
+      role: "Ты — эксперт по кузовному ремонту и оценке состояния ЛКП, геометрии кузова.",
+      task: "Оцени состояние кузова/ЛКП по описанным симптомам. Укажи возможные причины коррозии, дефектов покраски, зазоров.",
+      context: "Автомобиль: [Марка] [Модель]. Симптомы: [Симптомы].",
+      rules: "1. Проверь толщину ЛКП толщиномером.\n2. Осмотри сварные швы.\n3. Исключи скрытые повреждения после ДТП.",
+      hints: {
+        template: "🎨 Кузов/ЛКП. Ржавчина, сколы, шагрень, несовпадение оттенка. Понадобится толщиномер.",
+        brand: "Любая. Некоторые бренды склонны к коррозии (Mazda, старые Opel).",
+        model: "Например, «Mazda 3 BK», «Astra H».",
+        symptoms: ["ржавчина на арках", "сколы до металла", "вздутие краски", "неравномерные зазоры", "следы шпаклёвки", "разнотон дверей"]
+      }
+    },
+    climate: {
+      role: "Ты — специалист по системам кондиционирования и отопления автомобиля.",
+      task: "Диагностируй неисправность климат-контроля. Предложи проверку фреона, компрессора, датчиков, заслонок.",
+      context: "Автомобиль: [Марка] [Модель]. Симптомы: [Симптомы].",
+      rules: "1. Проверь давление в системе кондиционера.\n2. Считай ошибки блока климата.\n3. Осмотри радиатор кондиционера на герметичность.",
+      hints: {
+        template: "❄️ Климат. Нет холода/тепла, запах, шум вентилятора. Нужен манометр и термометр.",
+        brand: "Пример: Toyota, Ford, BMW — у них разные типы компрессоров.",
+        model: "Уточни: «Corolla E210», «Focus Mk4».",
+        symptoms: ["не холодит", "тепло не дует", "кондиционер включается с шумом", "неприятный запах", "запотевают стёкла", "ошибка климат-контроля"]
+      }
+    },
+    fuel: {
+      role: "Ты — диагност топливных систем (бензин/дизель). Знаешь всё о насосах, форсунках, фильтрах, давлении.",
+      task: "Определи причину проблемы с подачей топлива. Предложи замер давления, проверку форсунок, тест насоса.",
+      context: "Автомобиль: [Марка] [Модель]. Симптомы: [Симптомы].",
+      rules: "1. Проверь давление в рампе (эталонное значение).\n2. Сними показания коррекции топливоподачи.\n3. Проверь форсунки на стенде/баланс тест.",
+      hints: {
+        template: "⛽ Топливная. Перебои, расход, запах бензина. Нужен манометр топливной рампы.",
+        brand: "Дизель/бензин: Bosch, Delphi, Denso — система впрыска зависит от марки.",
+        model: "Пример: «Megane 1.5 dCi», «Solaris 1.6 MPI».",
+        symptoms: ["троит", "не заводится на горячую", "повышенный расход", "пахнет бензином", "потеря тяги", "чёрный дым", "захлёбывается"]
+      }
+    },
+    exhaust: {
+      role: "Ты — специалист по выхлопным системам и нейтрализации (катализаторы, сажевые фильтры, лямбда-зонды).",
+      task: "Диагностируй проблемы с выхлопом. Проверь состояние катализатора, датчиков кислорода, герметичность системы.",
+      context: "Автомобиль: [Марка] [Модель]. Симптомы: [Симптомы].",
+      rules: "1. Считай ошибки по лямбда-зондам и пропускам зажигания.\n2. Проверь противодавление выхлопа.\n3. Осмотри визуально на прогары.",
+      hints: {
+        template: "💨 Выхлоп. Дым, запах, ошибки P0420/P0430. Проверь катализатор, лямбды.",
+        brand: "Пример: VW (проблемные сажевые фильтры), Subaru (катализаторы).",
+        model: "Укажи: «Tiguan 2.0 TDI», «Forester 2.5».",
+        symptoms: ["горит Check Engine (P0420)", "чёрный/сизый дым", "запах сероводорода", "потеря мощности", "дребезг", "ошибка сажевого фильтра"]
+      }
+    },
+    general: {
+      role: "Ты — универсальный автоэксперт-диагност, способный комплексно оценить состояние автомобиля.",
+      task: "Проведи общее диагностирование по всем системам. Выдели критические, средние и незначительные замечания.",
+      context: "Автомобиль: [Марка] [Модель]. Симптомы: [Симптомы].",
+      rules: "1. Проверь историю обслуживания.\n2. Проведи визуальный осмотр.\n3. Подключи сканер OBD2 и считай все ошибки.\n4. Дай рекомендации по приоритетам ремонта.",
+      hints: {
+        template: "📋 Полная диагностика. Всё сразу. Опиши всё необычное: от стуков до лампочек.",
+        brand: "Любая марка.",
+        model: "Например, «Ceed 2018», «A6 C7».",
+        symptoms: ["Check Engine", "стук", "люфт", "скрип", "ошибка ABS", "вибрация", "неисправность", "шум", "течь"]
+      }
+    }
+  };
+
+  // Функция открытия/закрытия панели подсказок
+  function toggleHint(panelId, btnId) {
+    const panel = document.getElementById(panelId);
+    const btn = document.getElementById(btnId);
+    if (panel.classList.contains('open')) {
+      panel.classList.remove('open');
+    } else {
+      // Закрыть все остальные открытые панели
+      document.querySelectorAll('.hint-panel.open').forEach(p => p.classList.remove('open'));
+      panel.classList.add('open');
+    }
+  }
+
+  // Заполнение подсказок при выборе шаблона
+  function updateHints() {
+    const templateKey = document.getElementById('templateSelect').value;
+    const t = templates[templateKey];
+    if (!t) return;
+
+    // Общие подсказки шаблона
+    document.getElementById('hintTemplate').innerHTML = t.hints.template;
+    document.getElementById('hintBrand').innerHTML = t.hints.brand;
+    document.getElementById('hintModel').innerHTML = t.hints.model;
+
+    // Симптомы: список и чипсы
+    const symptomsList = t.hints.symptoms.map(s => `<li>${s}</li>`).join('');
+    document.getElementById('hintSymptoms').innerHTML = `<ul>${symptomsList}</ul>`;
+
+    const chipContainer = document.getElementById('symptomChips');
+    chipContainer.innerHTML = '';
+    t.hints.symptoms.forEach(symptom => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = symptom;
+      chip.addEventListener('click', () => {
+        const textarea = document.getElementById('symptoms');
+        if (textarea.value.trim() === '') {
+          textarea.value = symptom;
+        } else {
+          textarea.value += ', ' + symptom;
+        }
+        // Закрываем панель симптомов после выбора (опционально)
+        // document.getElementById('hintSymptoms').classList.remove('open');
+      });
+      chipContainer.appendChild(chip);
+    });
+  }
+
+  // Обработчики для кнопок 💡
+  document.getElementById('hintTemplateBtn').addEventListener('click', () => toggleHint('hintTemplate', 'hintTemplateBtn'));
+  document.getElementById('hintBrandBtn').addEventListener('click', () => toggleHint('hintBrand', 'hintBrandBtn'));
+  document.getElementById('hintModelBtn').addEventListener('click', () => toggleHint('hintModel', 'hintModelBtn'));
+  document.getElementById('hintSymptomsBtn').addEventListener('click', () => toggleHint('hintSymptoms', 'hintSymptomsBtn'));
+
+  // Закрытие подсказок при клике вне
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.hint-btn') && !e.target.closest('.hint-panel')) {
+      document.querySelectorAll('.hint-panel.open').forEach(p => p.classList.remove('open'));
+    }
+  });
+
+  // Сборка промпта
+  function assemblePrompt() {
+    const templateKey = document.getElementById('templateSelect').value;
+    const t = templates[templateKey];
+    const brand = document.getElementById('brand').value.trim() || '[Марка]';
+    const model = document.getElementById('model').value.trim() || '[Модель/Год/Двигатель]';
+    const symptoms = document.getElementById('symptoms').value.trim() || '[Симптомы]';
+    const chain = document.getElementById('chainOfThought').checked;
+    const security = document.getElementById('security').checked;
+
+    let context = t.context.replace('[Марка]', brand).replace('[Модель/Год/Двигатель]', model).replace('[Модель]', model).replace('[Симптомы]', symptoms);
+
+    let prompt = `РОЛЬ: ${t.role}\n\n`;
+    prompt += `ЗАДАЧА: ${t.task}\n\n`;
+    prompt += `КОНТЕКСТ: ${context}\n\n`;
+    prompt += `ПРАВИЛА: ${t.rules}\n\n`;
+
+    if (chain) prompt += "ЦЕПОЧКА РАССУЖДЕНИЙ: Думай шаг за шагом, объясняй каждый этап.\n\n";
+    if (security) prompt += "БЕЗОПАСНОСТЬ: Отметь все шаги, связанные с риском для жизни (высокое напряжение, топливная система, подушки безопасности). Если симптом критический — порекомендуй немедленно прекратить эксплуатацию.\n";
+
+    return prompt;
+  }
+
+  document.getElementById('generateBtn').addEventListener('click', () => {
+    const prompt = assemblePrompt();
+    document.getElementById('promptResult').textContent = prompt;
+    document.getElementById('outputBlock').style.display = 'block';
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    const text = document.getElementById('promptResult').textContent;
+    navigator.clipboard.writeText(text).then(() => alert('Промпт скопирован!'));
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    document.getElementById('brand').value = '';
+    document.getElementById('model').value = '';
+    document.getElementById('symptoms').value = '';
+    document.getElementById('outputBlock').style.display = 'none';
+  });
+
+  // Обновление подсказок при смене шаблона
+  document.getElementById('templateSelect').addEventListener('change', updateHints);
+
+  // Инициализация при загрузке
+  updateHints();
+</script>
+</body>
+</html>
